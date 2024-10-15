@@ -13,9 +13,17 @@ public class Player : MonoBehaviour {
   [SerializeField] private Rigidbody2D bulletPrefab;
   [SerializeField] private ParticleSystem destroyedParticles;
 
+  //[SerializeField] public GameManager gameManager;
+
   private Rigidbody2D shipRigidbody;
-  private bool isAlive = true;
+  public bool isAlive = true;
   private bool isAccelerating = false;
+
+
+
+  public GameObject objectToRespawn; // The object to respawn
+    public Vector3 respawnPosition; // The position to respawn the object
+    public float respawnTime = 3f; // Time to wait before respawning
 
   private void Start() {
     // Get a reference to the attached RigidBody2D.
@@ -75,21 +83,32 @@ public class Player : MonoBehaviour {
     }
   }
 
-  private void OnTriggerEnter2D(Collider2D collision) {
-    if (collision.CompareTag("Asteroid")) {
-      isAlive = false;
+private void OnTriggerEnter2D(Collider2D collision) {
+        if (collision.CompareTag("Asteroid")) {
+            HandlePlayerHit();
+        }
+    }
 
-      // Get a reference to the GameManager
-      GameManager gameManager = FindAnyObjectByType<GameManager>();
+    private void HandlePlayerHit() {
+        isAlive = false;
 
-      // Restart game after delay.
-      gameManager.GameOver();
+        // Show the destroyed effect.
+        Instantiate(destroyedParticles, transform.position, Quaternion.identity);
 
-      // Show the destroyed effect.
-      Instantiate(destroyedParticles, transform.position, Quaternion.identity);
+        // Deactivate the player GameObject
+        gameObject.SetActive(false);
 
-      // Destroy the player.
-      Destroy(gameObject);
+        // Get a reference to the GameManager
+        GameManager gameManager = FindObjectOfType<GameManager>();
+        gameManager.RemoveLife(); // Remove a life
+
+        // Check if player is out of lives
+        if (gameManager.livesRemaining == 0) {
+            gameManager.GameOver();
+        } else {
+            // Start the respawn coroutine from the GameManager
+            gameManager.StartCoroutine(gameManager.HandleRespawn(this, respawnTime));
+        }
     }
   }
-}
+

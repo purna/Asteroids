@@ -4,10 +4,29 @@ using UnityEngine.SceneManagement;
 
 public class GameManager : MonoBehaviour {
   [SerializeField] private Asteroid asteroidPrefab;
+
+   [SerializeField] private TMPro.TextMeshProUGUI livesText;
   
   public int asteroidCount = 0;
 
   private int level = 0;
+
+    // Variables to handle the game state.
+  private int startingLives = 3;
+  public int livesRemaining;
+  public float respawnCheckRadius = 2f; // Radius to check for asteroids
+
+  private bool playing = true;
+
+  
+
+  public GameObject panel;
+
+  
+   void Start() {
+    livesRemaining = startingLives;
+    livesText.text = $"{livesRemaining}";
+  }
 
   private void Update() {
     // If there are no asteroids left, spawn more!
@@ -62,4 +81,48 @@ public class GameManager : MonoBehaviour {
 
     yield return null;
   }
+
+  // Called from LoseLife whenever it detects a block has fallen off.
+  public void RemoveLife() {
+    // Update the lives remaining UI element.
+    livesRemaining = Mathf.Max(livesRemaining - 1, 0);
+    livesText.text = $"{livesRemaining}";
+    // Check for end of game.
+    if (livesRemaining == 0) {
+      playing = false;
+      panel.SetActive(true);
+
+    }
+  }
+
+  public IEnumerator HandleRespawn(Player player, float respawnTime) {
+        // Wait for the specified respawn time
+        yield return new WaitForSeconds(respawnTime);
+
+        // Check for nearby asteroids
+        while (AreAsteroidsNearby(player.respawnPosition)) {
+            Debug.Log("Asteroids nearby, waiting to respawn...");
+            yield return new WaitForSeconds(0.5f); // Check again after a brief pause
+        }
+
+        // Respawn the player at the specified position
+        player.transform.position = player.respawnPosition;
+
+        // Reactivate the player GameObject
+        player.gameObject.SetActive(true);
+        player.isAlive = true; // Set the alive state to true
+
+        Debug.Log("Player respawned");
+    }
+
+    private bool AreAsteroidsNearby(Vector3 position) {
+        // Check for colliders within the respawn check radius
+        Collider2D[] colliders = Physics2D.OverlapCircleAll(position, respawnCheckRadius);
+        foreach (Collider2D collider in colliders) {
+            if (collider.CompareTag("Asteroid")) {
+                return true; // Found an asteroid nearby
+            }
+        }
+        return false; // No asteroids nearby
+    }
 }
